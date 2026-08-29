@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>لوحة تحكم — إعلانات الكلية</title>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+
+<style>
+  :root{
+    --ink:#151312;
+    --paper:#eae5db;
+    --line:#151312;
+    --accent:#2f5233;
+    --accent-soft:#dfe8de;
+    --danger:#8a2f22;
+    --mono: 'Courier New', ui-monospace, monospace;
+    --serif: Georgia, 'Times New Roman', serif;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:var(--serif);
+    min-height:100vh;
+    padding:24px 16px 60px;
+  }
+  .wrap{max-width:720px;margin:0 auto;}
+
+  header{
+    border-bottom:3px solid var(--ink);
+    padding-bottom:14px;
+    margin-bottom:22px;
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-end;
+    gap:12px;
+    flex-wrap:wrap;
+  }
+  header .title{
+    font-size:28px;
+    font-weight:700;
+    letter-spacing:0.5px;
+  }
+  header .subtitle{
+    font-family:var(--mono);
+    font-size:12px;
+    letter-spacing:2px;
+    text-transform:uppercase;
+    color:#5a5650;
+  }
+  #status-dot{
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    font-family:var(--mono);
+    font-size:12px;
+    padding:6px 10px;
+    border:1px solid var(--ink);
+  }
+  #status-dot .dot{
+    width:8px;height:8px;border-radius:50%;
+    background:#b5522f;
+  }
+  #status-dot.ok .dot{background:var(--accent);}
+
+  section.panel{
+    background:#f5f2ea;
+    border:1px solid var(--ink);
+    padding:20px;
+    margin-bottom:20px;
+  }
+  label.field-label{
+    display:block;
+    font-family:var(--mono);
+    font-size:12px;
+    letter-spacing:1.5px;
+    text-transform:uppercase;
+    color:#5a5650;
+    margin-bottom:10px;
+  }
+
+  textarea{
+    width:100%;
+    min-height:280px;
+    font-family:var(--mono);
+    font-size:14px;
+    line-height:1.6;
+    padding:14px;
+    border:1px solid var(--ink);
+    background:#fff;
+    color:var(--ink);
+    resize:vertical;
+    direction:ltr;
+    text-align:left;
+  }
+  textarea:focus{outline:2px solid var(--accent);outline-offset:2px;}
+
+  .row{
+    display:flex;
+    gap:12px;
+    margin-top:16px;
+    flex-wrap:wrap;
+    align-items:center;
+  }
+
+  button{
+    font-family:var(--mono);
+    font-size:13px;
+    letter-spacing:1px;
+    text-transform:uppercase;
+    padding:12px 22px;
+    border:1px solid var(--ink);
+    background:var(--ink);
+    color:var(--paper);
+    cursor:pointer;
+    transition:transform .08s ease;
+  }
+  button:hover{transform:translateY(-1px);}
+  button:active{transform:translateY(0);}
+  button:focus-visible{outline:2px solid var(--accent);outline-offset:3px;}
+  button.secondary{
+    background:transparent;
+    color:var(--ink);
+  }
+  button.danger{
+    background:transparent;
+    color:var(--danger);
+    border-color:var(--danger);
+  }
+  button:disabled{opacity:0.4;cursor:not-allowed;}
+
+  #msg{
+    font-family:var(--mono);
+    font-size:12px;
+    margin-top:10px;
+    min-height:16px;
+    color:var(--accent);
+  }
+  #msg.err{color:var(--danger);}
+
+  .preview-frame{
+    border:1px solid var(--ink);
+    background:#000;
+    min-height:200px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    overflow:hidden;
+  }
+  .preview-frame iframe{
+    width:100%;
+    height:320px;
+    border:none;
+    background:#000;
+  }
+
+  .templates{
+    display:flex;
+    gap:8px;
+    flex-wrap:wrap;
+    margin-top:14px;
+  }
+  .templates button{
+    background:transparent;
+    color:var(--ink);
+    font-size:11px;
+    padding:8px 12px;
+  }
+
+  footer{
+    font-family:var(--mono);
+    font-size:11px;
+    color:#8a8578;
+    text-align:center;
+    margin-top:30px;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div>
+      <div class="title">لوحة التحكم</div>
+      <div class="subtitle">إعلانات الكلية — Admin</div>
+    </div>
+    <div id="status-dot"><span class="dot"></span><span id="status-text">جارِ الاتصال…</span></div>
+  </header>
+
+  <section class="panel">
+    <label class="field-label">كود HTML — بيظهر مباشرة على شاشة العرض</label>
+    <textarea id="html-input" placeholder="&lt;h1 style='color:white;text-align:center;margin-top:200px;'&gt;غداً امتحان مادة الشبكات&lt;/h1&gt;"></textarea>
+
+    <div class="templates" id="templates"></div>
+
+    <div class="row">
+      <button id="publish-btn">نشر على الشاشة</button>
+      <button id="clear-btn" class="danger">مسح الشاشة</button>
+      <button id="refresh-btn" class="secondary">تحديث المعاينة</button>
+    </div>
+    <div id="msg"></div>
+  </section>
+
+  <section class="panel">
+    <label class="field-label">معاينة — هيك رح تظهر على شاشة العرض فعليًا</label>
+    <div class="preview-frame">
+      <iframe id="preview" title="معاينة الشاشة"></iframe>
+    </div>
+  </section>
+
+  <footer>College Signage · Admin Console</footer>
+</div>
+
+<script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyDYsaP3zW2dPnljUWZE8TVIDHiphQgdDA8",
+    authDomain: "college-signage.firebaseapp.com",
+    databaseURL: "https://college-signage-default-rtdb.europe-west1.firebasedatabase.app",
+    projectId: "college-signage",
+    storageBucket: "college-signage.firebasestorage.app",
+    messagingSenderId: "820215192692",
+    appId: "1:820215192692:web:f76ca9d22d3e2221098521"
+  };
+
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.database();
+  const contentRef = db.ref('content/html');
+
+  const input = document.getElementById('html-input');
+  const msg = document.getElementById('msg');
+  const preview = document.getElementById('preview');
+  const statusDot = document.getElementById('status-dot');
+  const statusText = document.getElementById('status-text');
+
+  // حالة الاتصال
+  db.ref('.info/connected').on('value', (snap) => {
+    if (snap.val() === true) {
+      statusDot.classList.add('ok');
+      statusText.textContent = 'متصل';
+    } else {
+      statusDot.classList.remove('ok');
+      statusText.textContent = 'غير متصل';
+    }
+  });
+
+  function showMsg(text, isError) {
+    msg.textContent = text;
+    msg.className = isError ? 'err' : '';
+    setTimeout(() => { msg.textContent = ''; }, 3500);
+  }
+
+  function renderPreview(html) {
+    const doc = preview.contentDocument || preview.contentWindow.document;
+    doc.open();
+    doc.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><style>
+      html,body{margin:0;height:100%;background:#000;color:#fff;font-family:sans-serif;
+        display:flex;align-items:center;justify-content:center;overflow:hidden;}
+    </style></head><body>${html || ''}</body></html>`);
+    doc.close();
+  }
+
+  // تحميل آخر محتوى منشور عند فتح الصفحة
+  contentRef.once('value').then((snap) => {
+    const val = snap.val();
+    if (val) {
+      input.value = val;
+      renderPreview(val);
+    }
+  });
+
+  document.getElementById('publish-btn').addEventListener('click', () => {
+    const html = input.value;
+    if (!html.trim()) {
+      showMsg('اكتب كود HTML الأول قبل النشر', true);
+      return;
+    }
+    contentRef.set(html)
+      .then(() => {
+        showMsg('تم النشر على شاشة العرض ✓', false);
+        renderPreview(html);
+      })
+      .catch((err) => {
+        showMsg('خطأ بالنشر: ' + err.message, true);
+      });
+  });
+
+  document.getElementById('clear-btn').addEventListener('click', () => {
+    if (!confirm('متأكد بدك تمسح الشاشة؟')) return;
+    contentRef.set('')
+      .then(() => {
+        input.value = '';
+        renderPreview('');
+        showMsg('تم مسح الشاشة', false);
+      })
+      .catch((err) => showMsg('خطأ: ' + err.message, true));
+  });
+
+  document.getElementById('refresh-btn').addEventListener('click', () => {
+    renderPreview(input.value);
+  });
+
+  // قوالب جاهزة سريعة
+  const templates = [
+    {
+      label: 'تنبيه امتحان',
+      html: `<div style="text-align:center;padding:40px;">
+  <div style="font-size:28px;letter-spacing:4px;color:#e0c68c;margin-bottom:20px;">تنبيه</div>
+  <div style="font-size:64px;font-weight:bold;margin-bottom:16px;">غدًا امتحان مادة الشبكات</div>
+  <div style="font-size:28px;color:#ccc;">القاعة 204 — الساعة 10:00 صباحًا</div>
+</div>`
+    },
+    {
+      label: 'رحلة/فعالية',
+      html: `<div style="text-align:center;padding:40px;">
+  <div style="font-size:28px;letter-spacing:4px;color:#8ec9e0;margin-bottom:20px;">فعالية قادمة</div>
+  <div style="font-size:60px;font-weight:bold;margin-bottom:16px;">رحلة الكلية إلى تركيا</div>
+  <div style="font-size:26px;color:#ccc;">التسجيل مفتوح لغاية نهاية الأسبوع</div>
+</div>`
+    },
+    {
+      label: 'الدكتور غائب',
+      html: `<div style="text-align:center;padding:40px;">
+  <div style="font-size:28px;letter-spacing:4px;color:#e08c8c;margin-bottom:20px;">إشعار</div>
+  <div style="font-size:52px;font-weight:bold;">الدكتور أحمد لن يحضر محاضرة اليوم</div>
+</div>`
+    }
+  ];
+
+  const tplWrap = document.getElementById('templates');
+  templates.forEach(t => {
+    const b = document.createElement('button');
+    b.textContent = t.label;
+    b.addEventListener('click', () => {
+      input.value = t.html;
+      renderPreview(t.html);
+    });
+    tplWrap.appendChild(b);
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>شاشة الإعلانات — الكلية</title>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+
+<style>
+  html,body{
+    margin:0;
+    padding:0;
+    width:100%;
+    height:100%;
+    background:#0a0a0a;
+    overflow:hidden;
+    font-family: Georgia, 'Times New Roman', serif;
+  }
+  #stage{
+    width:100vw;
+    height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    color:#fff;
+  }
+  /* شاشة فارغة أنيقة قبل أول نشر */
+  #empty-state{
+    text-align:center;
+    color:#4a4a4a;
+    font-family: 'Courier New', monospace;
+    letter-spacing:3px;
+    font-size:16px;
+  }
+  /* مؤشر اتصال صغير يظهر بس لما يفصل، ركن تحت */
+  #conn-indicator{
+    position:fixed;
+    bottom:14px;
+    left:14px;
+    font-family:'Courier New', monospace;
+    font-size:11px;
+    letter-spacing:1px;
+    color:#c0392b;
+    background:rgba(0,0,0,0.6);
+    padding:6px 10px;
+    border-radius:3px;
+    display:none;
+    z-index:9999;
+  }
+  #conn-indicator.show{display:block;}
+</style>
+</head>
+<body>
+
+<div id="stage">
+  <div id="empty-state">جاري انتظار المحتوى…</div>
+</div>
+<div id="conn-indicator">⚠ انقطع الاتصال — جارِ إعادة المحاولة</div>
+
+<script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyDYsaP3zW2dPnljUWZE8TVIDHiphQgdDA8",
+    authDomain: "college-signage.firebaseapp.com",
+    databaseURL: "https://college-signage-default-rtdb.europe-west1.firebasedatabase.app",
+    projectId: "college-signage",
+    storageBucket: "college-signage.firebasestorage.app",
+    messagingSenderId: "820215192692",
+    appId: "1:820215192692:web:f76ca9d22d3e2221098521"
+  };
+
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.database();
+  const contentRef = db.ref('content/html');
+  const stage = document.getElementById('stage');
+  const connIndicator = document.getElementById('conn-indicator');
+
+  // مراقبة حالة الاتصال
+  db.ref('.info/connected').on('value', (snap) => {
+    if (snap.val() === true) {
+      connIndicator.classList.remove('show');
+    } else {
+      connIndicator.classList.add('show');
+    }
+  });
+
+  // الاستماع اللحظي لأي تحديث على المحتوى
+  contentRef.on('value', (snap) => {
+    const html = snap.val();
+    if (html && html.trim()) {
+      stage.innerHTML = html;
+    } else {
+      stage.innerHTML = '<div id="empty-state" style="text-align:center;color:#4a4a4a;font-family:\'Courier New\',monospace;letter-spacing:3px;font-size:16px;">جاري انتظار المحتوى…</div>';
+    }
+  }, (err) => {
+    stage.innerHTML = '<div style="color:#c0392b;font-family:monospace;font-size:14px;">خطأ بالاتصال: ' + err.message + '</div>';
+  });
+
+  // منع أي تفاعل غير مرغوب (سحب، تكبير) على شاشة العرض
+  document.addEventListener('touchmove', (e) => e.preventDefault(), { passive: false });
+  document.addEventListener('contextmenu', (e) => e.preventDefault());
+</script>
+</body>
+</html>
