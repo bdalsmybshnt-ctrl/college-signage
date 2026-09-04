@@ -4,10 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>شاشة الإعلانات — الكلية</title>
-
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
-
+<!-- مكتبة تعقيم HTML لمنع حقن سكربتات ضارة (XSS) قبل عرض أي محتوى قادم من القاعدة -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.6/purify.min.js"></script>
 <style>
   html,body{
     margin:0;
@@ -19,12 +19,27 @@
     font-family: Georgia, 'Times New Roman', serif;
   }
   #stage{
+    position:relative;
     width:100vw;
     height:100vh;
     display:flex;
     align-items:center;
     justify-content:center;
     color:#fff;
+  }
+  /* طبقتان لعمل انتقال ناعم (fade) بين سلايد وآخر بدون وميض */
+  .slide-layer{
+    position:absolute;
+    inset:0;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    opacity:0;
+    transition:opacity 600ms ease;
+    pointer-events:none;
+  }
+  .slide-layer.visible{
+    opacity:1;
   }
   /* شاشة فارغة أنيقة قبل أول نشر */
   #empty-state{
@@ -53,12 +68,11 @@
 </style>
 </head>
 <body>
-
 <div id="stage">
-  <div id="empty-state">جاري انتظار المحتوى…</div>
+  <div class="slide-layer visible" id="layer-a"></div>
+  <div class="slide-layer" id="layer-b"></div>
 </div>
 <div id="conn-indicator">⚠ انقطع الاتصال — جارِ إعادة المحاولة</div>
-
 <script>
   const firebaseConfig = {
     apiKey: "AIzaSyDYsaP3zW2dPnljUWZE8TVIDHiphQgdDA8",
@@ -70,11 +84,75 @@
     appId: "1:820215192692:web:f76ca9d22d3e2221098521"
   };
 
+  const DEFAULT_DURATION = 4000; // مدة افتراضية (مللي ثانية) للسلايد الذي لا يحدد مدته الخاصة
+  const EMPTY_STATE_HTML =
+    '<div id="empty-state">جاري انتظار المحتوى…</div>';
+
+  const layers = [document.getElementById('layer-a'), document.getElementById('layer-b')];
+  let activeLayerIndex = 0; // أي طبقة ظاهرة حاليًا (للتبديل الناعم)
+  const connIndicator = document.getElementById('conn-indicator');
+
+  let slides = [];          // القائمة الحالية للسلايدات القادمة من القاعدة
+  let currentSlide = 0;     // فهرس السلايد المعروض حاليًا
+  let slideTimer = null;    // مؤقّت الانتقال للسلايد التالي
+
+  // تعقيم أي HTML قادم من القاعدة قبل حقنه في الصفحة، لمنع تنفيذ سكربتات ضارة
+  function sanitize(html) {
+    if (typeof DOMPurify === 'undefined') {
+      // في حال فشل تحميل مكتبة التعقيم لأي سبب، لا نعرض المحتوى إطلاقًا تجنبًا لأي خطر أمني
+      console.error('DOMPurify غير محمّلة — تم تجاهل المحتوى لأسباب أمنية');
+      return '';
+    }
+    return DOMPurify.sanitize(html, { ADD_ATTR: ['target'] });
+  }
+
+  // عرض سلايد معيّن بانتقال ناعم (fade) بين طبقتين متبادلتين
+  function renderSlide(html) {
+    const nextLayerIndex = 1 - activeLayerIndex;
+    const nextLayer = layers[nextLayerIndex];
+    const currentLayer = layers[activeLayerIndex];
+
+    nextLayer.innerHTML = sanitize(html);
+    nextLayer.classList.add('visible');
+    currentLayer.classList.remove('visible');
+
+    activeLayerIndex = nextLayerIndex;
+  }
+
+  function showEmptyState() {
+    renderSlide(EMPTY_STATE_HTML);
+  }
+
+  // جدولة الانتقال للسلايد التالي حسب مدة السلايد الحالي
+  function scheduleNext() {
+    if (slideTimer) clearTimeout(slideTimer);
+    if (slides.length === 0) return;
+
+    const duration = Number(slides[currentSlide] && slides[currentSlide].duration) || DEFAULT_DURATION;
+    slideTimer = setTimeout(() => {
+      currentSlide = (currentSlide + 1) % slides.length;
+      renderSlide(slides[currentSlide].html || '');
+      scheduleNext();
+    }, duration);
+  }
+
+  // إعادة تشغيل السلايدر من البداية (يُستدعى كلما تغيّرت قائمة السلايدات في القاعدة)
+  function startSlideshow(newSlides) {
+    slides = newSlides;
+    currentSlide = 0;
+    if (slideTimer) clearTimeout(slideTimer);
+
+    if (slides.length === 0) {
+      showEmptyState();
+      return;
+    }
+    renderSlide(slides[0].html || '');
+    scheduleNext();
+  }
+
   firebase.initializeApp(firebaseConfig);
   const db = firebase.database();
-  const contentRef = db.ref('content/html');
-  const stage = document.getElementById('stage');
-  const connIndicator = document.getElementById('conn-indicator');
+  const slidesRef = db.ref('content/slides');
 
   // مراقبة حالة الاتصال
   db.ref('.info/connected').on('value', (snap) => {
@@ -85,21 +163,39 @@
     }
   });
 
-  // الاستماع اللحظي لأي تحديث على المحتوى
-  contentRef.on('value', (snap) => {
-    const html = snap.val();
-    if (html && html.trim()) {
-      stage.innerHTML = html;
-    } else {
-      stage.innerHTML = '<div id="empty-state" style="text-align:center;color:#4a4a4a;font-family:\'Courier New\',monospace;letter-spacing:3px;font-size:16px;">جاري انتظار المحتوى…</div>';
+  // الاستماع اللحظي لأي تحديث على قائمة السلايدات
+  // البنية المتوقعة في القاعدة:
+  // content/slides/0: { html: "<div>...</div>", duration: 5000 }
+  // content/slides/1: { html: "<div>...</div>", duration: 3000 }
+  slidesRef.on('value', (snap) => {
+    const raw = snap.val();
+    if (!raw) {
+      startSlideshow([]);
+      return;
     }
+    // تحويل الكائن (object) القادم من Firebase إلى مصفوفة مرتّبة حسب المفاتيح
+    const newSlides = Object.keys(raw)
+      .sort((a, b) => Number(a) - Number(b))
+      .map((key) => raw[key])
+      .filter((slide) => slide && typeof slide.html === 'string' && slide.html.trim());
+
+    startSlideshow(newSlides);
   }, (err) => {
-    stage.innerHTML = '<div style="color:#c0392b;font-family:monospace;font-size:14px;">خطأ بالاتصال: ' + err.message + '</div>';
+    if (slideTimer) clearTimeout(slideTimer);
+    renderSlide('<div style="color:#c0392b;font-family:monospace;font-size:14px;">خطأ بالاتصال: ' + err.message + '</div>');
   });
 
   // منع أي تفاعل غير مرغوب (سحب، تكبير) على شاشة العرض
   document.addEventListener('touchmove', (e) => e.preventDefault(), { passive: false });
   document.addEventListener('contextmenu', (e) => e.preventDefault());
+
+  // في حال فشل تحميل Firebase SDK نفسه (مثلاً بسبب انقطاع إنترنت لحظة فتح الصفحة)
+  window.addEventListener('error', (e) => {
+    if (typeof firebase === 'undefined') {
+      showEmptyState();
+      setTimeout(() => location.reload(), 15000); // إعادة محاولة تحميل الصفحة بعد 15 ثانية
+    }
+  });
 </script>
 </body>
 </html>
