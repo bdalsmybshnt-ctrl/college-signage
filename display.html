@@ -137,18 +137,23 @@
   }
 
   // إعادة تشغيل السلايدر من البداية (يُستدعى كلما تغيّرت قائمة السلايدات في القاعدة)
-  function startSlideshow(newSlides) {
+ function startSlideshow(newSlides) {
     slides = newSlides;
+
+    console.log("عدد الصفحات:", slides.length);
+
     currentSlide = 0;
+
     if (slideTimer) clearTimeout(slideTimer);
 
     if (slides.length === 0) {
-      showEmptyState();
-      return;
+        showEmptyState();
+        return;
     }
+
     renderSlide(slides[0].html || '');
     scheduleNext();
-  }
+}
 
   firebase.initializeApp(firebaseConfig);
   const db = firebase.database();
