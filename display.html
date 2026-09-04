@@ -1,730 +1,201 @@
-```html
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
-
 <head>
-
-    <meta charset="UTF-8">
-
-    <meta name="viewport"
-          content="width=device-width, initial-scale=1.0">
-
-    <title>شاشة العرض</title>
-
-
-    <!-- =========================================
-         Firebase
-    ========================================== -->
-
-    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-
-    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
-
-
-    <!-- حماية HTML -->
-
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.6/purify.min.js"></script>
-
-
-    <style>
-
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-
-        html,
-        body {
-
-            width: 100%;
-            height: 100%;
-
-            overflow: hidden;
-
-            background: #000;
-
-            font-family: Arial, sans-serif;
-        }
-
-
-        #stage {
-
-            position: relative;
-
-            width: 100vw;
-            height: 100vh;
-        }
-
-
-        .slide {
-
-            position: absolute;
-
-            inset: 0;
-
-            width: 100%;
-            height: 100%;
-
-            display: flex;
-
-            justify-content: center;
-            align-items: center;
-
-            opacity: 0;
-
-            transition: opacity 0.6s ease;
-
-            pointer-events: none;
-        }
-
-
-        .slide.active {
-
-            opacity: 1;
-        }
-
-
-        #empty {
-
-            color: white;
-
-            font-size: 30px;
-
-            text-align: center;
-
-            padding: 30px;
-        }
-
-
-        /* =========================================
-           حالة الاتصال
-        ========================================== */
-
-        #connection {
-
-            position: fixed;
-
-            bottom: 10px;
-            left: 10px;
-
-            background: rgba(0, 0, 0, 0.8);
-
-            color: white;
-
-            padding: 8px 14px;
-
-            font-size: 14px;
-
-            border-radius: 5px;
-
-            display: none;
-
-            z-index: 9999;
-        }
-
-
-        #connection.show {
-
-            display: block;
-        }
-
-
-        #connection.error {
-
-            color: #ff4444;
-        }
-
-
-        #connection.loading {
-
-            color: #ffff00;
-        }
-
-
-        #connection.success {
-
-            color: #00ff66;
-        }
-
-    </style>
-
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>شاشة الإعلانات — الكلية</title>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<!-- مكتبة تعقيم HTML لمنع حقن سكربتات ضارة (XSS) قبل عرض أي محتوى قادم من القاعدة -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.6/purify.min.js"></script>
+<style>
+  html,body{
+    margin:0;
+    padding:0;
+    width:100%;
+    height:100%;
+    background:#0a0a0a;
+    overflow:hidden;
+    font-family: Georgia, 'Times New Roman', serif;
+  }
+  #stage{
+    position:relative;
+    width:100vw;
+    height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    color:#fff;
+  }
+  /* طبقتان لعمل انتقال ناعم (fade) بين سلايد وآخر بدون وميض */
+  .slide-layer{
+    position:absolute;
+    inset:0;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    opacity:0;
+    transition:opacity 600ms ease;
+    pointer-events:none;
+  }
+  .slide-layer.visible{
+    opacity:1;
+  }
+  /* شاشة فارغة أنيقة قبل أول نشر */
+  #empty-state{
+    text-align:center;
+    color:#4a4a4a;
+    font-family: 'Courier New', monospace;
+    letter-spacing:3px;
+    font-size:16px;
+  }
+  /* مؤشر اتصال صغير يظهر بس لما يفصل، ركن تحت */
+  #conn-indicator{
+    position:fixed;
+    bottom:14px;
+    left:14px;
+    font-family:'Courier New', monospace;
+    font-size:11px;
+    letter-spacing:1px;
+    color:#c0392b;
+    background:rgba(0,0,0,0.6);
+    padding:6px 10px;
+    border-radius:3px;
+    display:none;
+    z-index:9999;
+  }
+  #conn-indicator.show{display:block;}
+</style>
 </head>
-
-
 <body>
-
-
 <div id="stage">
-
-    <div id="slide1" class="slide active"></div>
-
-    <div id="slide2" class="slide"></div>
-
+  <div class="slide-layer visible" id="layer-a"></div>
+  <div class="slide-layer" id="layer-b"></div>
 </div>
-
-
-<div id="connection">
-    جارٍ الاتصال...
-</div>
-
-
+<div id="conn-indicator">⚠ انقطع الاتصال — جارِ إعادة المحاولة</div>
 <script>
-
-
-/* =====================================================
-   Firebase Configuration
-===================================================== */
-
-const firebaseConfig = {
-
+  const firebaseConfig = {
     apiKey: "AIzaSyDYsaP3zW2dPnljUWZE8TVIDHiphQgdDA8",
+    authDomain: "college-signage.firebaseapp.com",
+    databaseURL: "https://college-signage-default-rtdb.europe-west1.firebasedatabase.app",
+    projectId: "college-signage",
+    storageBucket: "college-signage.firebasestorage.app",
+    messagingSenderId: "820215192692",
+    appId: "1:820215192692:web:f76ca9d22d3e2221098521"
+  };
 
-    authDomain:
-        "college-signage.firebaseapp.com",
+  const DEFAULT_DURATION = 4000; // مدة افتراضية (مللي ثانية) للسلايد الذي لا يحدد مدته الخاصة
+  const EMPTY_STATE_HTML =
+    '<div id="empty-state">جاري انتظار المحتوى…</div>';
 
-    databaseURL:
-        "https://college-signage-default-rtdb.europe-west1.firebasedatabase.app",
+  const layers = [document.getElementById('layer-a'), document.getElementById('layer-b')];
+  let activeLayerIndex = 0; // أي طبقة ظاهرة حاليًا (للتبديل الناعم)
+  const connIndicator = document.getElementById('conn-indicator');
 
-    projectId:
-        "college-signage",
+  let slides = [];          // القائمة الحالية للسلايدات القادمة من القاعدة
+  let currentSlide = 0;     // فهرس السلايد المعروض حاليًا
+  let slideTimer = null;    // مؤقّت الانتقال للسلايد التالي
 
-    storageBucket:
-        "college-signage.firebasestorage.app",
-
-    messagingSenderId:
-        "820215192692",
-
-    appId:
-        "1:820215192692:web:f76ca9d22d3e2221098521"
-};
-
-
-/* =====================================================
-   المتغيرات
-===================================================== */
-
-let slides = [];
-
-let currentSlide = 0;
-
-let timer = null;
-
-let activeLayer = 0;
-
-let firstConnection = true;
-
-
-/* =====================================================
-   عناصر الصفحة
-===================================================== */
-
-const layers = [
-
-    document.getElementById("slide1"),
-
-    document.getElementById("slide2")
-
-];
-
-
-const connection =
-    document.getElementById("connection");
-
-
-/* =====================================================
-   إظهار حالة الاتصال
-===================================================== */
-
-function showConnection(message, type) {
-
-    connection.textContent = message;
-
-    connection.className = "";
-
-    connection.classList.add("show");
-
-    if (type) {
-
-        connection.classList.add(type);
-
+  // تعقيم أي HTML قادم من القاعدة قبل حقنه في الصفحة، لمنع تنفيذ سكربتات ضارة
+  function sanitize(html) {
+    if (typeof DOMPurify === 'undefined') {
+      // في حال فشل تحميل مكتبة التعقيم لأي سبب، لا نعرض المحتوى إطلاقًا تجنبًا لأي خطر أمني
+      console.error('DOMPurify غير محمّلة — تم تجاهل المحتوى لأسباب أمنية');
+      return '';
     }
-
-}
-
-
-/* =====================================================
-   إخفاء حالة الاتصال
-===================================================== */
-
-function hideConnection() {
-
-    connection.className = "";
-
-}
-
-
-/* =====================================================
-   تشغيل Firebase
-===================================================== */
-
-let db = null;
-
-
-try {
-
-    console.log("بدء تشغيل Firebase...");
-
-    firebase.initializeApp(firebaseConfig);
-
-    db = firebase.database();
-
-    console.log("تم تشغيل Firebase بنجاح.");
-
-}
-catch (error) {
-
-    console.error(
-        "خطأ أثناء تشغيل Firebase:",
-        error
-    );
-
-    showConnection(
-        "خطأ في تشغيل Firebase",
-        "error"
-    );
-}
-
-
-/* =====================================================
-   تنظيف HTML
-===================================================== */
-
-function cleanHTML(html) {
-
-    if (typeof DOMPurify === "undefined") {
-
-        console.error(
-            "DOMPurify غير محمل."
-        );
-
-        return html;
-    }
-
-
-    return DOMPurify.sanitize(html, {
-
-        ADD_TAGS: [
-            "iframe",
-            "video",
-            "audio"
-        ],
-
-        ADD_ATTR: [
-            "allow",
-            "allowfullscreen",
-            "frameborder",
-            "src",
-            "controls",
-            "autoplay",
-            "muted",
-            "loop"
-        ]
-
-    });
-}
-
-
-/* =====================================================
-   عرض الصفحة
-===================================================== */
-
-function showSlide(index) {
-
-    if (slides.length === 0) {
-
-        return;
-    }
-
-
-    const nextLayer =
-        1 - activeLayer;
-
-
-    const oldLayer =
-        activeLayer;
-
-
-    layers[nextLayer].innerHTML =
-        cleanHTML(slides[index].html);
-
-
-    layers[nextLayer].classList.add("active");
-
-
-    layers[oldLayer].classList.remove("active");
-
-
-    activeLayer =
-        nextLayer;
-
-
-    console.log(
-        "عرض الصفحة:",
-        index + 1,
-        "من",
-        slides.length
-    );
-}
-
-
-/* =====================================================
-   الانتقال للصفحة التالية
-===================================================== */
-
-function nextSlide() {
-
-    if (slides.length <= 1) {
-
-        return;
-    }
-
-
-    currentSlide++;
-
-
-    if (currentSlide >= slides.length) {
-
-        currentSlide = 0;
-    }
-
-
-    showSlide(currentSlide);
-
-
-    timer = setTimeout(
-        nextSlide,
-        4000
-    );
-}
-
-
-/* =====================================================
-   بدء العرض
-===================================================== */
-
-function startSlideshow() {
-
-    /* إلغاء المؤقت القديم */
-
-    if (timer !== null) {
-
-        clearTimeout(timer);
-
-        timer = null;
-    }
-
-
-    /* لا يوجد محتوى */
-
-    if (slides.length === 0) {
-
-        layers[0].innerHTML =
-            '<div id="empty">جاري انتظار المحتوى...</div>';
-
-        layers[0].classList.add("active");
-
-        layers[1].classList.remove("active");
-
-        return;
-    }
-
-
-    /* البداية */
-
+    return DOMPurify.sanitize(html, { ADD_ATTR: ['target'] });
+  }
+
+  // عرض سلايد معيّن بانتقال ناعم (fade) بين طبقتين متبادلتين
+  function renderSlide(html) {
+    const nextLayerIndex = 1 - activeLayerIndex;
+    const nextLayer = layers[nextLayerIndex];
+    const currentLayer = layers[activeLayerIndex];
+
+    nextLayer.innerHTML = sanitize(html);
+    nextLayer.classList.add('visible');
+    currentLayer.classList.remove('visible');
+
+    activeLayerIndex = nextLayerIndex;
+  }
+
+  function showEmptyState() {
+    renderSlide(EMPTY_STATE_HTML);
+  }
+
+  // جدولة الانتقال للسلايد التالي حسب مدة السلايد الحالي
+  function scheduleNext() {
+    if (slideTimer) clearTimeout(slideTimer);
+    if (slides.length === 0) return;
+
+    const duration = Number(slides[currentSlide] && slides[currentSlide].duration) || DEFAULT_DURATION;
+    slideTimer = setTimeout(() => {
+      currentSlide = (currentSlide + 1) % slides.length;
+      renderSlide(slides[currentSlide].html || '');
+      scheduleNext();
+    }, duration);
+  }
+
+  // إعادة تشغيل السلايدر من البداية (يُستدعى كلما تغيّرت قائمة السلايدات في القاعدة)
+  function startSlideshow(newSlides) {
+    slides = newSlides;
     currentSlide = 0;
+    if (slideTimer) clearTimeout(slideTimer);
 
-    activeLayer = 0;
-
-
-    layers[0].innerHTML =
-        cleanHTML(slides[0].html);
-
-
-    layers[0].classList.add("active");
-
-    layers[1].classList.remove("active");
-
-
-    console.log(
-        "تم تشغيل العرض.",
-        "عدد الصفحات:",
-        slides.length
-    );
-
-
-    /* إذا كانت هناك صفحة واحدة فقط */
-
-    if (slides.length <= 1) {
-
-        return;
+    if (slides.length === 0) {
+      showEmptyState();
+      return;
     }
-
-
-    /* تشغيل المؤقت */
-
-    timer = setTimeout(
-        nextSlide,
-        4000
-    );
-}
-
-
-/* =====================================================
-   قراءة المحتوى من Firebase
-===================================================== */
-
-if (db) {
-
-
-    const slidesRef =
-        db.ref("content/slides");
-
-
-    console.log(
-        "جارٍ الاتصال بالمسار:",
-        "content/slides"
-    );
-
-
-    slidesRef.on(
-
-        "value",
-
-        function(snapshot) {
-
-            console.log(
-                "وصلت بيانات من Firebase."
-            );
-
-
-            const data =
-                snapshot.val();
-
-
-            /* لا يوجد محتوى */
-
-            if (!data) {
-
-                console.log(
-                    "لا يوجد محتوى في content/slides"
-                );
-
-
-                slides = [];
-
-                startSlideshow();
-
-                return;
-            }
-
-
-            /* تحويل البيانات إلى مصفوفة */
-
-            slides = Object.keys(data)
-
-                .sort(function(a, b) {
-
-                    return Number(a) - Number(b);
-
-                })
-
-                .map(function(key) {
-
-                    return data[key];
-
-                })
-
-                .filter(function(slide) {
-
-                    return (
-
-                        slide &&
-
-                        typeof slide.html === "string" &&
-
-                        slide.html.trim() !== ""
-
-                    );
-
-                });
-
-
-            console.log(
-                "Firebase أرسل:",
-                slides.length,
-                "صفحات"
-            );
-
-
-            /* تشغيل العرض */
-
-            startSlideshow();
-
-        },
-
-
-        function(error) {
-
-            console.error(
-                "خطأ في قراءة Firebase:",
-                error
-            );
-
-
-            showConnection(
-                "خطأ في قراءة المحتوى",
-                "error"
-            );
-
-        }
-
-    );
-
-
-    /* =================================================
-       مراقبة الاتصال
-    ================================================= */
-
-    db.ref(".info/connected").on(
-
-        "value",
-
-        function(snapshot) {
-
-            const connected =
-                snapshot.val() === true;
-
-
-            console.log(
-                "حالة Firebase:",
-                connected
-                    ? "متصل"
-                    : "غير متصل"
-            );
-
-
-            if (connected) {
-
-                hideConnection();
-
-                firstConnection = false;
-
-            }
-            else {
-
-                if (firstConnection) {
-
-                    showConnection(
-                        "جارٍ الاتصال بـ Firebase...",
-                        "loading"
-                    );
-
-                }
-                else {
-
-                    showConnection(
-                        "⚠ لا يوجد اتصال",
-                        "error"
-                    );
-
-                }
-
-            }
-
-        }
-
-    );
-
-}
-
-
-/* =====================================================
-   اختبار الاتصال كل 10 ثواني
-===================================================== */
-
-setInterval(function() {
-
-    if (db) {
-
-        console.log(
-            "اختبار الاتصال بـ Firebase..."
-        );
-
-        db.goOnline();
-
+    renderSlide(slides[0].html || '');
+    scheduleNext();
+  }
+
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.database();
+  const slidesRef = db.ref('content/slides');
+
+  // مراقبة حالة الاتصال
+  db.ref('.info/connected').on('value', (snap) => {
+    if (snap.val() === true) {
+      connIndicator.classList.remove('show');
+    } else {
+      connIndicator.classList.add('show');
     }
+  });
 
-}, 10000);
-
-
-/* =====================================================
-   منع القائمة بزر الفأرة
-===================================================== */
-
-document.addEventListener(
-
-    "contextmenu",
-
-    function(event) {
-
-        event.preventDefault();
-
+  // الاستماع اللحظي لأي تحديث على قائمة السلايدات
+  // البنية المتوقعة في القاعدة:
+  // content/slides/0: { html: "<div>...</div>", duration: 5000 }
+  // content/slides/1: { html: "<div>...</div>", duration: 3000 }
+  slidesRef.on('value', (snap) => {
+    const raw = snap.val();
+    if (!raw) {
+      startSlideshow([]);
+      return;
     }
+    // تحويل الكائن (object) القادم من Firebase إلى مصفوفة مرتّبة حسب المفاتيح
+    const newSlides = Object.keys(raw)
+      .sort((a, b) => Number(a) - Number(b))
+      .map((key) => raw[key])
+      .filter((slide) => slide && typeof slide.html === 'string' && slide.html.trim());
 
-);
+    startSlideshow(newSlides);
+  }, (err) => {
+    if (slideTimer) clearTimeout(slideTimer);
+    renderSlide('<div style="color:#c0392b;font-family:monospace;font-size:14px;">خطأ بالاتصال: ' + err.message + '</div>');
+  });
 
+  // منع أي تفاعل غير مرغوب (سحب، تكبير) على شاشة العرض
+  document.addEventListener('touchmove', (e) => e.preventDefault(), { passive: false });
+  document.addEventListener('contextmenu', (e) => e.preventDefault());
 
-/* =====================================================
-   منع تحريك الصفحة باللمس
-===================================================== */
-
-document.addEventListener(
-
-    "touchmove",
-
-    function(event) {
-
-        event.preventDefault();
-
-    },
-
-    {
-        passive: false
+  // في حال فشل تحميل Firebase SDK نفسه (مثلاً بسبب انقطاع إنترنت لحظة فتح الصفحة)
+  window.addEventListener('error', (e) => {
+    if (typeof firebase === 'undefined') {
+      showEmptyState();
+      setTimeout(() => location.reload(), 15000); // إعادة محاولة تحميل الصفحة بعد 15 ثانية
     }
-
-);
-
-
-/* =====================================================
-   اختبار المؤقت
-===================================================== */
-
-setInterval(function() {
-
-    console.log(
-        "المؤقت يعمل..."
-    );
-
-}, 4000);
-
-
+  });
 </script>
-
-
 </body>
-
 </html>
-```
->
