@@ -1,201 +1,1223 @@
+```html
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
+
 <head>
+
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>شاشة الإعلانات — الكلية</title>
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>لوحة تحكم الإعلانات</title>
+
+<!-- Firebase -->
+
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
-<!-- مكتبة تعقيم HTML لمنع حقن سكربتات ضارة (XSS) قبل عرض أي محتوى قادم من القاعدة -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.6/purify.min.js"></script>
+
+
 <style>
-  html,body{
+
+/* ============================= */
+/* إعدادات عامة */
+/* ============================= */
+
+*{
     margin:0;
     padding:0;
-    width:100%;
-    height:100%;
-    background:#0a0a0a;
-    overflow:hidden;
-    font-family: Georgia, 'Times New Roman', serif;
-  }
-  #stage{
-    position:relative;
-    width:100vw;
-    height:100vh;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    color:#fff;
-  }
-  /* طبقتان لعمل انتقال ناعم (fade) بين سلايد وآخر بدون وميض */
-  .slide-layer{
-    position:absolute;
-    inset:0;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    opacity:0;
-    transition:opacity 600ms ease;
-    pointer-events:none;
-  }
-  .slide-layer.visible{
-    opacity:1;
-  }
-  /* شاشة فارغة أنيقة قبل أول نشر */
-  #empty-state{
+    box-sizing:border-box;
+}
+
+body{
+
+    font-family:Arial, sans-serif;
+
+    background:
+
+    linear-gradient(
+    135deg,
+    #0f2027,
+    #203a43,
+    #2c5364
+    );
+
+    min-height:100vh;
+
+    color:white;
+
+}
+
+
+/* ============================= */
+/* الهيدر */
+/* ============================= */
+
+header{
+
+    background:
+
+    rgba(0,0,0,0.4);
+
+    padding:25px;
+
     text-align:center;
-    color:#4a4a4a;
-    font-family: 'Courier New', monospace;
-    letter-spacing:3px;
+
+    box-shadow:
+
+    0 5px 20px rgba(0,0,0,0.4);
+
+}
+
+header h1{
+
+    font-size:30px;
+
+}
+
+header p{
+
+    margin-top:10px;
+
+    color:#ccc;
+
+}
+
+
+/* ============================= */
+/* المحتوى */
+/* ============================= */
+
+.container{
+
+    width:90%;
+
+    max-width:1200px;
+
+    margin:40px auto;
+
+}
+
+
+/* ============================= */
+/* البطاقات */
+/* ============================= */
+
+.card{
+
+    background:
+
+    rgba(255,255,255,0.08);
+
+    backdrop-filter:
+
+    blur(10px);
+
+    padding:30px;
+
+    border-radius:15px;
+
+    box-shadow:
+
+    0 10px 30px rgba(0,0,0,0.4);
+
+    margin-bottom:30px;
+
+}
+
+
+/* ============================= */
+/* العناوين */
+/* ============================= */
+
+.card h2{
+
+    margin-bottom:25px;
+
+    border-bottom:
+
+    1px solid rgba(255,255,255,0.2);
+
+    padding-bottom:15px;
+
+}
+
+
+/* ============================= */
+/* الحقول */
+/* ============================= */
+
+.form-group{
+
+    margin-bottom:20px;
+
+}
+
+
+label{
+
+    display:block;
+
+    margin-bottom:8px;
+
     font-size:16px;
-  }
-  /* مؤشر اتصال صغير يظهر بس لما يفصل، ركن تحت */
-  #conn-indicator{
-    position:fixed;
-    bottom:14px;
-    left:14px;
-    font-family:'Courier New', monospace;
-    font-size:11px;
-    letter-spacing:1px;
-    color:#c0392b;
-    background:rgba(0,0,0,0.6);
-    padding:6px 10px;
-    border-radius:3px;
-    display:none;
-    z-index:9999;
-  }
-  #conn-indicator.show{display:block;}
+
+}
+
+
+input,
+textarea{
+
+    width:100%;
+
+    padding:14px;
+
+    border:none;
+
+    border-radius:8px;
+
+    font-size:16px;
+
+    outline:none;
+
+}
+
+
+textarea{
+
+    min-height:120px;
+
+    resize:vertical;
+
+}
+
+
+/* ============================= */
+/* اختيار الألوان */
+/* ============================= */
+
+.colors{
+
+    display:flex;
+
+    gap:15px;
+
+    flex-wrap:wrap;
+
+}
+
+
+.color-option{
+
+    width:45px;
+
+    height:45px;
+
+    border-radius:50%;
+
+    cursor:pointer;
+
+    border:3px solid white;
+
+}
+
+
+.color-option:hover{
+
+    transform:scale(1.1);
+
+}
+
+
+/* ============================= */
+/* الأزرار */
+/* ============================= */
+
+.buttons{
+
+    display:flex;
+
+    gap:15px;
+
+    flex-wrap:wrap;
+
+    margin-top:20px;
+
+}
+
+
+button{
+
+    border:none;
+
+    padding:
+
+    14px 25px;
+
+    border-radius:8px;
+
+    font-size:16px;
+
+    cursor:pointer;
+
+    transition:0.3s;
+
+}
+
+
+button:hover{
+
+    transform:
+
+    translateY(-3px);
+
+}
+
+
+.btn-preview{
+
+    background:
+
+    #3498db;
+
+    color:white;
+
+}
+
+
+.btn-save{
+
+    background:
+
+    #27ae60;
+
+    color:white;
+
+}
+
+
+.btn-delete{
+
+    background:
+
+    #e74c3c;
+
+    color:white;
+
+}
+
+
+/* ============================= */
+/* المعاينة */
+/* ============================= */
+
+.preview{
+
+    margin-top:30px;
+
+    min-height:350px;
+
+    background:#111;
+
+    border-radius:15px;
+
+    overflow:hidden;
+
+    display:flex;
+
+    align-items:center;
+
+    justify-content:center;
+
+}
+
+
+/* ============================= */
+/* قائمة الإعلانات */
+/* ============================= */
+
+.slide-item{
+
+    display:flex;
+
+    justify-content:
+
+    space-between;
+
+    align-items:center;
+
+    background:
+
+    rgba(255,255,255,0.1);
+
+    padding:15px;
+
+    margin-bottom:10px;
+
+    border-radius:8px;
+
+}
+
+
+.slide-item button{
+
+    padding:
+
+    8px 15px;
+
+}
+
+
+/* ============================= */
+/* Responsive */
+/* ============================= */
+
+@media(max-width:700px){
+
+    header h1{
+
+        font-size:22px;
+
+    }
+
+    .container{
+
+        width:95%;
+
+    }
+
+}
+
 </style>
+
 </head>
+
+
 <body>
-<div id="stage">
-  <div class="slide-layer visible" id="layer-a"></div>
-  <div class="slide-layer" id="layer-b"></div>
+
+
+<!-- ============================= -->
+<!-- Header -->
+<!-- ============================= -->
+
+<header>
+
+<h1>
+📢 لوحة تحكم الإعلانات
+</h1>
+
+<p>
+نظام إدارة شاشة الإعلانات الإلكترونية
+</p>
+
+</header>
+
+
+
+<div class="container">
+
+
+<!-- ============================= -->
+<!-- إضافة إعلان -->
+<!-- ============================= -->
+
+<div class="card">
+
+<h2>
+➕ إضافة إعلان جديد
+</h2>
+
+
+<div class="form-group">
+
+<label>
+
+عنوان الإعلان
+
+</label>
+
+<input
+
+type="text"
+
+id="title"
+
+placeholder="مثال: إعلان تجديد القيد"
+
+>
+
 </div>
-<div id="conn-indicator">⚠ انقطع الاتصال — جارِ إعادة المحاولة</div>
+
+
+
+<div class="form-group">
+
+<label>
+
+نص الإعلان
+
+</label>
+
+<textarea
+
+id="description"
+
+placeholder="اكتب تفاصيل الإعلان هنا..."
+
+></textarea>
+
+</div>
+
+
+
+<div class="form-group">
+
+<label>
+
+رابط الصورة
+
+</label>
+
+<input
+
+type="text"
+
+id="image"
+
+placeholder="https://example.com/image.jpg"
+
+>
+
+</div>
+
+
+
+<div class="form-group">
+
+<label>
+
+مدة العرض بالثواني
+
+</label>
+
+<input
+
+type="number"
+
+id="duration"
+
+value="5"
+
+min="1"
+
+>
+
+</div>
+
+
+
+<div class="form-group">
+
+<label>
+
+اختر لون الإعلان
+
+</label>
+
+
+<div class="colors">
+
+
+<div
+
+class="color-option"
+
+style="background:#3498db"
+
+onclick="selectColor('#3498db')"
+
+></div>
+
+
+<div
+
+class="color-option"
+
+style="background:#e74c3c"
+
+onclick="selectColor('#e74c3c')"
+
+></div>
+
+
+<div
+
+class="color-option"
+
+style="background:#27ae60"
+
+onclick="selectColor('#27ae60')"
+
+></div>
+
+
+<div
+
+class="color-option"
+
+style="background:#f39c12"
+
+onclick="selectColor('#f39c12')"
+
+></div>
+
+
+<div
+
+class="color-option"
+
+style="background:#8e44ad"
+
+onclick="selectColor('#8e44ad')"
+
+></div>
+
+
+</div>
+
+</div>
+
+
+
+<div class="buttons">
+
+
+<button
+
+class="btn-preview"
+
+onclick="previewAnnouncement()"
+
+>
+
+👀 معاينة الإعلان
+
+</button>
+
+
+<button
+
+class="btn-save"
+
+onclick="saveAnnouncement()"
+
+>
+
+💾 نشر الإعلان
+
+</button>
+
+
+</div>
+
+
+<!-- ============================= -->
+<!-- Preview -->
+<!-- ============================= -->
+
+<div
+
+class="preview"
+
+id="preview"
+
+>
+
+ستظهر معاينة الإعلان هنا
+
+</div>
+
+
+</div>
+
+
+
+<!-- ============================= -->
+<!-- قائمة الإعلانات -->
+<!-- ============================= -->
+
+<div class="card">
+
+<h2>
+
+📋 الإعلانات الحالية
+
+</h2>
+
+
+<div
+
+id="slidesList"
+
+>
+
+جاري تحميل الإعلانات...
+
+</div>
+
+
+</div>
+
+
+
+</div>
+
+
+
 <script>
-  const firebaseConfig = {
-    apiKey: "AIzaSyDYsaP3zW2dPnljUWZE8TVIDHiphQgdDA8",
-    authDomain: "college-signage.firebaseapp.com",
-    databaseURL: "https://college-signage-default-rtdb.europe-west1.firebasedatabase.app",
-    projectId: "college-signage",
-    storageBucket: "college-signage.firebasestorage.app",
-    messagingSenderId: "820215192692",
-    appId: "1:820215192692:web:f76ca9d22d3e2221098521"
-  };
 
-  const DEFAULT_DURATION = 4000; // مدة افتراضية (مللي ثانية) للسلايد الذي لا يحدد مدته الخاصة
-  const EMPTY_STATE_HTML =
-    '<div id="empty-state">جاري انتظار المحتوى…</div>';
 
-  const layers = [document.getElementById('layer-a'), document.getElementById('layer-b')];
-  let activeLayerIndex = 0; // أي طبقة ظاهرة حاليًا (للتبديل الناعم)
-  const connIndicator = document.getElementById('conn-indicator');
+/* ============================= */
+/* Firebase Config */
+/* ============================= */
 
-  let slides = [];          // القائمة الحالية للسلايدات القادمة من القاعدة
-  let currentSlide = 0;     // فهرس السلايد المعروض حاليًا
-  let slideTimer = null;    // مؤقّت الانتقال للسلايد التالي
+const firebaseConfig = {
 
-  // تعقيم أي HTML قادم من القاعدة قبل حقنه في الصفحة، لمنع تنفيذ سكربتات ضارة
-  function sanitize(html) {
-    if (typeof DOMPurify === 'undefined') {
-      // في حال فشل تحميل مكتبة التعقيم لأي سبب، لا نعرض المحتوى إطلاقًا تجنبًا لأي خطر أمني
-      console.error('DOMPurify غير محمّلة — تم تجاهل المحتوى لأسباب أمنية');
-      return '';
-    }
-    return DOMPurify.sanitize(html, { ADD_ATTR: ['target'] });
-  }
+apiKey: "AIzaSyDYsaP3zW2dPnljUWZE8TVIDHiphQgdDA8",
 
-  // عرض سلايد معيّن بانتقال ناعم (fade) بين طبقتين متبادلتين
-  function renderSlide(html) {
-    const nextLayerIndex = 1 - activeLayerIndex;
-    const nextLayer = layers[nextLayerIndex];
-    const currentLayer = layers[activeLayerIndex];
+authDomain: "college-signage.firebaseapp.com",
 
-    nextLayer.innerHTML = sanitize(html);
-    nextLayer.classList.add('visible');
-    currentLayer.classList.remove('visible');
+databaseURL:
+"https://college-signage-default-rtdb.europe-west1.firebasedatabase.app",
 
-    activeLayerIndex = nextLayerIndex;
-  }
+projectId:
+"college-signage",
 
-  function showEmptyState() {
-    renderSlide(EMPTY_STATE_HTML);
-  }
+storageBucket:
+"college-signage.firebasestorage.app",
 
-  // جدولة الانتقال للسلايد التالي حسب مدة السلايد الحالي
-  function scheduleNext() {
-    if (slideTimer) clearTimeout(slideTimer);
-    if (slides.length === 0) return;
+messagingSenderId:
+"820215192692",
 
-    const duration = Number(slides[currentSlide] && slides[currentSlide].duration) || DEFAULT_DURATION;
-    slideTimer = setTimeout(() => {
-      currentSlide = (currentSlide + 1) % slides.length;
-      renderSlide(slides[currentSlide].html || '');
-      scheduleNext();
-    }, duration);
-  }
+appId:
+"1:820215192692:web:f76ca9d22d3e2221098521"
 
-  // إعادة تشغيل السلايدر من البداية (يُستدعى كلما تغيّرت قائمة السلايدات في القاعدة)
-  function startSlideshow(newSlides) {
-    slides = newSlides;
-    currentSlide = 0;
-    if (slideTimer) clearTimeout(slideTimer);
+};
 
-    if (slides.length === 0) {
-      showEmptyState();
-      return;
-    }
-    renderSlide(slides[0].html || '');
-    scheduleNext();
-  }
 
-  firebase.initializeApp(firebaseConfig);
-  const db = firebase.database();
-  const slidesRef = db.ref('content/slides');
+/* ============================= */
+/* Firebase Start */
+/* ============================= */
 
-  // مراقبة حالة الاتصال
-  db.ref('.info/connected').on('value', (snap) => {
-    if (snap.val() === true) {
-      connIndicator.classList.remove('show');
-    } else {
-      connIndicator.classList.add('show');
-    }
-  });
+firebase.initializeApp(firebaseConfig);
 
-  // الاستماع اللحظي لأي تحديث على قائمة السلايدات
-  // البنية المتوقعة في القاعدة:
-  // content/slides/0: { html: "<div>...</div>", duration: 5000 }
-  // content/slides/1: { html: "<div>...</div>", duration: 3000 }
-  slidesRef.on('value', (snap) => {
-    const raw = snap.val();
-    if (!raw) {
-      startSlideshow([]);
-      return;
-    }
-    // تحويل الكائن (object) القادم من Firebase إلى مصفوفة مرتّبة حسب المفاتيح
-    const newSlides = Object.keys(raw)
-      .sort((a, b) => Number(a) - Number(b))
-      .map((key) => raw[key])
-      .filter((slide) => slide && typeof slide.html === 'string' && slide.html.trim());
 
-    startSlideshow(newSlides);
-  }, (err) => {
-    if (slideTimer) clearTimeout(slideTimer);
-    renderSlide('<div style="color:#c0392b;font-family:monospace;font-size:14px;">خطأ بالاتصال: ' + err.message + '</div>');
-  });
+const db = firebase.database();
 
-  // منع أي تفاعل غير مرغوب (سحب، تكبير) على شاشة العرض
-  document.addEventListener('touchmove', (e) => e.preventDefault(), { passive: false });
-  document.addEventListener('contextmenu', (e) => e.preventDefault());
 
-  // في حال فشل تحميل Firebase SDK نفسه (مثلاً بسبب انقطاع إنترنت لحظة فتح الصفحة)
-  window.addEventListener('error', (e) => {
-    if (typeof firebase === 'undefined') {
-      showEmptyState();
-      setTimeout(() => location.reload(), 15000); // إعادة محاولة تحميل الصفحة بعد 15 ثانية
-    }
-  });
+const slidesRef =
+
+db.ref("content/slides");
+
+
+/* ============================= */
+/* اللون الحالي */
+/* ============================= */
+
+let selectedColor =
+
+"#3498db";
+
+
+function selectColor(color){
+
+selectedColor = color;
+
+}
+
+
+/* ============================= */
+/* إنشاء HTML الإعلان */
+/* ============================= */
+
+function generateAnnouncementHTML(){
+
+
+const title =
+
+document.getElementById("title").value;
+
+
+const description =
+
+document.getElementById("description").value;
+
+
+const image =
+
+document.getElementById("image").value;
+
+
+
+return `
+
+<div
+
+style="
+
+width:100vw;
+
+height:100vh;
+
+display:flex;
+
+flex-direction:column;
+
+align-items:center;
+
+justify-content:center;
+
+text-align:center;
+
+background:
+
+linear-gradient(
+
+135deg,
+
+${selectedColor},
+
+#111
+
+);
+
+color:white;
+
+padding:50px;
+
+box-sizing:border-box;
+
+"
+
+>
+
+
+<h1
+
+style="
+
+font-size:60px;
+
+margin-bottom:30px;
+
+"
+
+>
+
+${title}
+
+</h1>
+
+
+${
+image
+?
+
+`
+
+<img
+
+src="${image}"
+
+style="
+
+max-width:70%;
+
+max-height:40vh;
+
+border-radius:15px;
+
+margin-bottom:30px;
+
+"
+
+>
+
+`
+
+:
+
+""
+
+}
+
+
+<p
+
+style="
+
+font-size:32px;
+
+max-width:1000px;
+
+line-height:1.8;
+
+"
+
+>
+
+${description}
+
+</p>
+
+
+</div>
+
+`;
+
+
+}
+
+
+/* ============================= */
+/* معاينة الإعلان */
+/* ============================= */
+
+function previewAnnouncement(){
+
+
+const html =
+
+generateAnnouncementHTML();
+
+
+document.getElementById(
+
+"preview"
+
+).innerHTML = html;
+
+
+}
+
+
+/* ============================= */
+/* حفظ الإعلان */
+/* ============================= */
+
+function saveAnnouncement(){
+
+
+const title =
+
+document.getElementById(
+
+"title"
+
+).value.trim();
+
+
+const description =
+
+document.getElementById(
+
+"description"
+
+).value.trim();
+
+
+const duration =
+
+Number(
+
+document.getElementById(
+
+"duration"
+
+).value
+
+);
+
+
+if(!title){
+
+alert(
+
+"يرجى كتابة عنوان الإعلان"
+
+);
+
+return;
+
+}
+
+
+if(!description){
+
+alert(
+
+"يرجى كتابة نص الإعلان"
+
+);
+
+return;
+
+}
+
+
+const html =
+
+generateAnnouncementHTML();
+
+
+/* الحصول على الإعلانات الحالية */
+
+slidesRef.once(
+
+"value"
+
+).then(
+
+snapshot => {
+
+
+const slides =
+
+snapshot.val() || {};
+
+
+const keys =
+
+Object.keys(slides);
+
+
+const newIndex =
+
+keys.length;
+
+
+slides[newIndex] = {
+
+html:html,
+
+duration:
+
+duration * 1000
+
+};
+
+
+/* حفظ */
+
+slidesRef.set(
+
+slides
+
+).then(
+
+()=>{
+
+
+alert(
+
+"تم نشر الإعلان بنجاح 🎉"
+
+);
+
+
+/* تفريغ الحقول */
+
+document.getElementById(
+
+"title"
+
+).value = "";
+
+
+document.getElementById(
+
+"description"
+
+).value = "";
+
+
+document.getElementById(
+
+"image"
+
+).value = "";
+
+
+document.getElementById(
+
+"preview"
+
+).innerHTML =
+
+"ستظهر معاينة الإعلان هنا";
+
+
+}
+
+);
+
+
+}
+
+);
+
+
+}
+
+
+/* ============================= */
+/* تحميل الإعلانات */
+/* ============================= */
+
+slidesRef.on(
+
+"value",
+
+snapshot => {
+
+
+const slides =
+
+snapshot.val();
+
+
+const container =
+
+document.getElementById(
+
+"slidesList"
+
+);
+
+
+container.innerHTML = "";
+
+
+if(!slides){
+
+
+container.innerHTML =
+
+"لا توجد إعلانات";
+
+
+return;
+
+}
+
+
+Object.keys(
+
+slides
+
+).forEach(
+
+key => {
+
+
+const slide =
+
+slides[key];
+
+
+const div =
+
+document.createElement(
+
+"div"
+
+);
+
+
+div.className =
+
+"slide-item";
+
+
+div.innerHTML =
+
+`
+
+<span>
+
+إعلان رقم
+
+${Number(key)+1}
+
+</span>
+
+
+<button
+
+class="btn-delete"
+
+onclick="deleteSlide(${key})"
+
+>
+
+🗑️ حذف
+
+</button>
+
+`;
+
+
+container.appendChild(
+
+div
+
+);
+
+
+}
+
+);
+
+
+}
+
+);
+
+
+/* ============================= */
+/* حذف إعلان */
+/* ============================= */
+
+function deleteSlide(index){
+
+
+if(
+
+!confirm(
+
+"هل تريد حذف هذا الإعلان؟"
+
+)
+
+)
+
+return;
+
+
+slidesRef.child(
+
+index
+
+).remove();
+
+
+}
+
+
 </script>
+
+
 </body>
+
 </html>
+```
