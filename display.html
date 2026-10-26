@@ -1,10 +1,14 @@
-
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>شاشة العرض</title>
+
+<!-- استدعاء خطوط Google Fonts الاحترافية (Reem Kufi و Tajawal) -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Reem+Kufi:wght@700&family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
 
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
@@ -18,7 +22,8 @@
     overflow: hidden;
     background: #000;
     color: #fff;
-    font-family: Arial, sans-serif;
+    /* تعيين خط Tajawal كخط افتراضي عام للشاشة */
+    font-family: 'Tajawal', Arial, sans-serif;
   }
 
   /* تظهر فقط إذا ما في محتوى منشور بعد */
@@ -31,6 +36,7 @@
     font-size:22px;
     color:#666;
     letter-spacing:1px;
+    font-family: 'Tajawal', sans-serif;
   }
 
   #content{
@@ -39,7 +45,7 @@
     display:none;
   }
 
-  /* مؤشر اتصال صغير بالركن، تقدر تشيله لو ما بدك ياه يظهر بالشاشة */
+  /* مؤشر اتصال صغير بالركن */
   #conn{
     position:fixed;
     bottom:10px;
@@ -75,7 +81,6 @@
   firebase.initializeApp(firebaseConfig);
   const db = firebase.database();
 
-  // نفس المسار اللي تنشر عليه admin.html
   const contentRef = db.ref('content/html');
 
   const placeholder = document.getElementById('placeholder');
